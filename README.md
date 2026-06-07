@@ -19,6 +19,7 @@ a [bearer token](https://www.rfc-editor.org/rfc/rfc6750).
     * [JSON Web Key Set URL](#json-web-key-set-url)
     * [Validating Key](#validating-key)
     * [Static Identity Token](#static-identity-token)
+* [Releases](#releases)
 * [Usage](#usage)
 <!-- TOC -->
 
@@ -172,6 +173,18 @@ key may be provided. For HMAC signature methods, a base64-encoded key or raw key
 While not recommended, a static identity token may be provided for validation. Keep in mind, all OIDC required claims
 will be verified, including token audience and expiration claims. Signature validation will not be performed with a
 static identity token.
+
+## Releases
+
+The Go module is `github.com/pezops/oidc-proxy`. Releases after v0.1.0 are published as signed multi-platform
+container images to both registries:
+
+- `ghcr.io/pezops/oidc-proxy`
+- `docker.io/pezops/oidc-proxy`
+
+Each release publishes its exact version tag. The latest stable release also updates the minor,
+major, and `latest` tags. For example, `v0.1.2` publishes `0.1.2`, `0.1`, `0`, and `latest`. See
+[RELEASING.md](RELEASING.md) for the maintainer workflow.
 
 ## Usage
 

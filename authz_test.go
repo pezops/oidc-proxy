@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/mbrancato/oidc-proxy/auth"
+	"github.com/pezops/oidc-proxy/auth"
 )
 
 func TestModifyValidateRequest(t *testing.T) {

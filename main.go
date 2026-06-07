@@ -14,8 +14,8 @@ import (
 
 	"github.com/jessevdk/go-flags"
 
-	"github.com/mbrancato/oidc-proxy/auth"
-	"github.com/mbrancato/oidc-proxy/config"
+	"github.com/pezops/oidc-proxy/auth"
+	"github.com/pezops/oidc-proxy/config"
 )
 
 var cfg = config.ProxyConfig{}
