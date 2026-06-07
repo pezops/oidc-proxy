@@ -17,26 +17,35 @@ import (
 )
 
 type jwksTester struct {
-	invalidKey   *rsa.PrivateKey
-	privateKey   *rsa.PrivateKey
-	invalidKeyId string
-	keyId        string
-	jwksUrl      string
+	additionalKeys []*rsa.PrivateKey
+	invalidKey     *rsa.PrivateKey
+	privateKey     *rsa.PrivateKey
+	invalidKeyId   string
+	keyId          string
+	jwksUrl        string
 }
 
 func (t *jwksTester) jwksHandler(w http.ResponseWriter, r *http.Request) {
-	jwk := map[string]interface{}{
+	keys := make([]interface{}, 0, len(t.additionalKeys)+1)
+	for _, key := range t.additionalKeys {
+		keys = append(keys, rsaJWK(key, keyFingerprint(key)))
+	}
+	keys = append(keys, rsaJWK(t.privateKey, t.keyId))
+
+	jwks := map[string]interface{}{
+		"keys": keys,
+	}
+	_ = json.NewEncoder(w).Encode(jwks)
+}
+
+func rsaJWK(key *rsa.PrivateKey, kid string) map[string]interface{} {
+	return map[string]interface{}{
 		"kty": "RSA",
-		"kid": t.keyId,
-		"n":   base64.RawURLEncoding.EncodeToString(t.privateKey.PublicKey.N.Bytes()),
+		"kid": kid,
+		"n":   base64.RawURLEncoding.EncodeToString(key.PublicKey.N.Bytes()),
 		"e":   base64.URLEncoding.EncodeToString([]byte{1, 0, 1}),
 		"use": "sig",
 	}
-
-	jwks := map[string]interface{}{
-		"keys": []interface{}{jwk},
-	}
-	_ = json.NewEncoder(w).Encode(jwks)
 }
 
 func (t *jwksTester) startJwksServer() *httptest.Server {
@@ -228,6 +237,30 @@ func TestJwksValidation(t *testing.T) {
 			},
 		)
 	}
+}
+
+func TestJwksValidationWithoutKIDTriesAllKeys(t *testing.T) {
+	tn, closer := setupJwksForTest()
+	defer closer()
+
+	// Put a non-signing key first to verify validation does not depend on JWKS order.
+	tn.additionalKeys = []*rsa.PrivateKey{tn.invalidKey}
+
+	claims := jwt.MapClaims{
+		"aud": "test-svc",
+		"iss": "https://test-svc",
+		"sub": "1234567890",
+		"exp": time.Now().Add(time.Minute).Unix(),
+		"iat": time.Now().Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tokenString, err := token.SignedString(tn.privateKey)
+	assert.NoError(t, err)
+
+	manager := NewJwksKeyManager(tn.jwksUrl, &ValidatableMapClaims{"aud": "test-svc"})
+	valid, err := manager.Validate(tokenString)
+	assert.True(t, valid)
+	assert.NoError(t, err)
 }
 
 func keyFingerprint(key *rsa.PrivateKey) string {

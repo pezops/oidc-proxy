@@ -25,13 +25,24 @@ type JwksKeyManager struct {
 func (m *JwksKeyManager) Validate(tok string) (bool, error) {
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(
-		tok, &claims, m.jwks.Keyfunc,
+		tok, &claims, m.keyfunc,
 	)
 	if err != nil {
 		return false, err
 	}
 
 	return m.expectedClaims.ValidateClaims(&claims)
+}
+
+// keyfunc uses the JWT kid header when present. When kid is omitted, it
+// returns all verification keys and lets jwt try each key against the
+// signature.
+func (m *JwksKeyManager) keyfunc(token *jwt.Token) (any, error) {
+	if _, ok := token.Header[jwkset.HeaderKID]; ok {
+		return m.jwks.Keyfunc(token)
+	}
+
+	return m.jwks.VerificationKeySet(context.Background())
 }
 
 // NewJwksKeyManager returns a new JwksKeyManager for the specified JWKS URL.
