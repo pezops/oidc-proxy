@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.0](https://github.com/pezops/oidc-proxy/compare/v0.0.6...v0.1.0) (2026-06-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* Move to Release Please and relocate to the pezops org ([#13](https://github.com/pezops/oidc-proxy/issues/13))
+
+### Bug Fixes
+
+* Allow JWT validation without a `kid` header ([#16](https://github.com/pezops/oidc-proxy/issues/16)) ([1561d2d](https://github.com/pezops/oidc-proxy/commit/1561d2d356c63b2c8eb6cdf9138e5723ccf6235d))
+
+
+### Documentation
+
+* Document weekly rebuild and floating tags in releases ([#17](https://github.com/pezops/oidc-proxy/issues/17)) ([a610ee1](https://github.com/pezops/oidc-proxy/commit/a610ee1140f0d1d6fb341aac265345ab4af2a20c))
+
+
+### Continuous Integration
+
+* Add check for tidy Go modules ([#18](https://github.com/pezops/oidc-proxy/issues/18)) ([26d77c4](https://github.com/pezops/oidc-proxy/commit/26d77c4e0eb8701c246a91b049abd77c2ddce1cb))
+* Move to Release Please and relocate to the pezops org ([#13](https://github.com/pezops/oidc-proxy/issues/13)) ([3ceb870](https://github.com/pezops/oidc-proxy/commit/3ceb8708e839e208f7df270ec8b50509e2719f54))
+
 ## [0.0.6](https://github.com/pezops/oidc-proxy/compare/v0.0.5...v0.0.6) (2025-12-12)
 
 ### Continuous Integration
