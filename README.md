@@ -182,9 +182,21 @@ container images to both registries:
 - `ghcr.io/pezops/oidc-proxy`
 - `docker.io/pezops/oidc-proxy`
 
-Each release publishes its exact version tag. The latest stable release also updates the minor,
-major, and `latest` tags. For example, `v0.1.2` publishes `0.1.2`, `0.1`, `0`, and `latest`. See
-[RELEASING.md](RELEASING.md) for the maintainer workflow.
+### Floating Container Tags
+
+All container tags are floating tags and may move to an updated image digest to provide security 
+updates. However, the code and dependency versions for a given patch release tag will not change.
+See [RELEASING.md](RELEASING.md) for the maintainer workflow.
+
+Every week, the latest release is rebuilt and retagged. The application source and dependency 
+versions stay fixed, but the base image and the Go standard library are updated. The tags are then 
+updated to point to the new image digest. This allows consumers to receive important security 
+updates without needing to change their tag reference.
+
+This tag policy balances operational stability with ongoing security maintenance. Deployments can
+stay on a specific release while receiving rebuilt images that pick up Go standard library updates 
+and underlying base OS vulnerability fixes. Consumers that require a fully immutable artifact can 
+still pin the container image to a specific digest instead of a tag.
 
 ## Usage
 
