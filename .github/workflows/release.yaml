@@ -6,8 +6,6 @@ on:
 
 env:
   GHCR_REPO: ghcr.io/${{ github.repository }}
-  DOCKERHUB_REPO_NAME: ${{ vars.DOCKER_REPO }}
-  DOCKERHUB_REPO: docker.io/${{ vars.DOCKER_REPO }}
   RELEASE_TAG: ${{ github.event.release.tag_name }}
   GOTOOLCHAIN: local
 
@@ -60,13 +58,24 @@ jobs:
       - name: Run tests
         run: go test -count 1 -v ./...
 
+      - name: Normalize Docker Hub repository
+        id: docker-repo
+        env:
+          DOCKER_REPO: ${{ vars.DOCKER_REPO }}
+        run: |
+          set -euo pipefail
+          REPOSITORY="${DOCKER_REPO#docker.io/}"
+          test -n "${REPOSITORY}" || { echo "DOCKER_REPO is not configured"; exit 1; }
+          echo "DOCKERHUB_REPO=docker.io/${REPOSITORY}" >> "$GITHUB_ENV"
+          echo "repository=docker.io/${REPOSITORY}" >> "$GITHUB_OUTPUT"
+
       - name: Validate registry configuration
         env:
           DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
-          test -n "${DOCKERHUB_REPO_NAME}" || { echo "DOCKER_REPO is not configured"; exit 1; }
+          test -n "${DOCKERHUB_REPO}" || { echo "DOCKER_REPO is not configured"; exit 1; }
           test -n "${DOCKERHUB_USERNAME}" || { echo "DOCKERHUB_USERNAME is not configured"; exit 1; }
           test -n "${DOCKERHUB_TOKEN}" || { echo "DOCKERHUB_TOKEN is not configured"; exit 1; }
 
@@ -180,6 +189,6 @@ jobs:
       - name: Attest Docker Hub build provenance
         uses: actions/attest-build-provenance@v4
         with:
-          subject-name: ${{ env.DOCKERHUB_REPO }}
+          subject-name: ${{ steps.docker-repo.outputs.repository }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
