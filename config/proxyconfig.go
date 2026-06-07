@@ -3,7 +3,7 @@ package config
 import (
 	"errors"
 
-	"github.com/mbrancato/oidc-proxy/auth"
+	"github.com/pezops/oidc-proxy/auth"
 )
 
 // ProxyConfig is the base configuration for the oidc-proxy. It it used to

@@ -1,0 +1,185 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+env:
+  GHCR_REPO: ghcr.io/${{ github.repository }}
+  DOCKERHUB_REPO_NAME: ${{ vars.DOCKER_REPO }}
+  DOCKERHUB_REPO: docker.io/${{ vars.DOCKER_REPO }}
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
+  GOTOOLCHAIN: local
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish Container Images
+    if: github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: 'false'
+
+      - name: Resolve Go patch series
+        id: go-version
+        run: |
+          set -euo pipefail
+          GO_DIRECTIVE=$(awk '$1 == "go" { print $2; exit }' go.mod)
+          if ! [[ "${GO_DIRECTIVE}" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
+            echo "Unsupported go directive: ${GO_DIRECTIVE}"
+            exit 1
+          fi
+          echo "version=${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.x" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ steps.go-version.outputs.version }}
+          check-latest: true
+          cache: true
+
+      - name: Verify dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Run tests
+        run: go test -count 1 -v ./...
+
+      - name: Validate registry configuration
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${DOCKERHUB_REPO_NAME}" || { echo "DOCKER_REPO is not configured"; exit 1; }
+          test -n "${DOCKERHUB_USERNAME}" || { echo "DOCKERHUB_USERNAME is not configured"; exit 1; }
+          test -n "${DOCKERHUB_TOKEN}" || { echo "DOCKERHUB_TOKEN is not configured"; exit 1; }
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Setup ko
+        uses: ko-build/setup-ko@v0.9
+
+      - name: Setup crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Prepare version tags
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#v}"
+          if ! [[ "${VERSION}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Unsupported release tag: ${RELEASE_TAG}"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "minor=${BASH_REMATCH[1]}.${BASH_REMATCH[2]}" >> "$GITHUB_OUTPUT"
+          echo "major=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and publish exact version to GHCR
+        id: image
+        env:
+          KO_DOCKER_REPO: ${{ env.GHCR_REPO }}
+        run: |
+          set -euo pipefail
+          IMAGE_REF=$(ko build --bare \
+            --platform=all \
+            --tags "${{ steps.version.outputs.version }}" \
+            .)
+          if [[ "${IMAGE_REF}" != *@sha256:* ]]; then
+            echo "ko image reference did not include a digest: ${IMAGE_REF}"
+            exit 1
+          fi
+          echo "full_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "digest=${IMAGE_REF##*@}" >> "$GITHUB_OUTPUT"
+
+      - name: Copy exact version to Docker Hub
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          crane copy "${GHCR_REPO}@${DIGEST}" "${DOCKERHUB_REPO}:${VERSION}"
+          DOCKERHUB_DIGEST=$(crane digest "${DOCKERHUB_REPO}:${VERSION}")
+          if [[ "${DOCKERHUB_DIGEST}" != "${DIGEST}" ]]; then
+            echo "Registry digest mismatch: GHCR=${DIGEST}, Docker Hub=${DOCKERHUB_DIGEST}"
+            exit 1
+          fi
+
+      - name: Check if this is the latest release
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LATEST_TAG=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')
+          if [[ "${LATEST_TAG}" == "${RELEASE_TAG}" ]]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish floating tags
+        if: steps.latest.outputs.is_latest == 'true'
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+          MINOR: ${{ steps.version.outputs.minor }}
+          MAJOR: ${{ steps.version.outputs.major }}
+        run: |
+          set -euo pipefail
+          for repository in "${GHCR_REPO}" "${DOCKERHUB_REPO}"; do
+            crane tag "${repository}@${DIGEST}" "${MINOR}"
+            crane tag "${repository}@${DIGEST}" "${MAJOR}"
+            crane tag "${repository}@${DIGEST}" latest
+          done
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Sign images
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${GHCR_REPO}@${DIGEST}"
+          cosign sign --yes "${DOCKERHUB_REPO}@${DIGEST}"
+
+      - name: Attest GHCR build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.GHCR_REPO }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest Docker Hub build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.DOCKERHUB_REPO }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true

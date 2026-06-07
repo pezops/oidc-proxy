@@ -1,4 +1,4 @@
-module github.com/mbrancato/oidc-proxy
+module github.com/pezops/oidc-proxy
 
 go 1.25.0
 

@@ -5,7 +5,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# Restrict permissions to minimum required (read-only)
+# Restrict permissions to the minimum required (read-only)
 permissions:
   contents: read
   pull-requests: read
@@ -15,6 +15,8 @@ jobs:
     name: Build and Test PR
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      GOTOOLCHAIN: local
 
     steps:
       - name: Checkout PR Code
@@ -22,20 +24,23 @@ jobs:
         with:
           persist-credentials: 'false'
 
+      - name: Resolve Go patch series
+        id: go-version
+        run: |
+          set -euo pipefail
+          GO_DIRECTIVE=$(awk '$1 == "go" { print $2; exit }' go.mod)
+          if ! [[ "${GO_DIRECTIVE}" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
+            echo "Unsupported go directive: ${GO_DIRECTIVE}"
+            exit 1
+          fi
+          echo "version=${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.x" >> "$GITHUB_OUTPUT"
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: 'stable'
-
-      - name: Set Go Toolchain to Local
-        run: |
-          echo "GOTOOLCHAIN=local" >> $GITHUB_ENV
-          go version
-
-      - name: Update Go Toolchain in go.mod
-        run: |
-          GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-          go mod edit -go=$GO_VERSION -toolchain=go$GO_VERSION
+          go-version: ${{ steps.go-version.outputs.version }}
+          check-latest: true
+          cache: true
 
       - name: Download Dependencies
         run: go mod download
@@ -48,4 +53,3 @@ jobs:
 
       - name: Build
         run: go build -v .
-

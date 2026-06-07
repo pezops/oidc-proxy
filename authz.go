@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"gopkg.in/yaml.v3"
 
-	"github.com/mbrancato/oidc-proxy/auth"
+	"github.com/pezops/oidc-proxy/auth"
 )
 
 // modifyRequestAuthz will modify an in-flight request in egress mode to
