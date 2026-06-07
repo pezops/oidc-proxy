@@ -20,6 +20,35 @@
 ### Continuous Integration
 
 * Add check for tidy Go modules ([#18](https://github.com/pezops/oidc-proxy/issues/18)) ([26d77c4](https://github.com/pezops/oidc-proxy/commit/26d77c4e0eb8701c246a91b049abd77c2ddce1cb))
+* Move crane install away from 3rd-party action ([#19](https://github.com/pezops/oidc-proxy/issues/19)) ([92f8e19](https://github.com/pezops/oidc-proxy/commit/92f8e19d93897c69b910fcdd97b698a13d8a80de))
+* Move to Release Please and relocate to the pezops org ([#13](https://github.com/pezops/oidc-proxy/issues/13)) ([3ceb870](https://github.com/pezops/oidc-proxy/commit/3ceb8708e839e208f7df270ec8b50509e2719f54))
+* Roll back manifest to support re-release ([#21](https://github.com/pezops/oidc-proxy/issues/21)) ([0000a89](https://github.com/pezops/oidc-proxy/commit/0000a89017d8ec7b948317720969ec74ee40f2ed))
+
+
+### Miscellaneous
+
+* **main:** release 0.1.0 ([#14](https://github.com/pezops/oidc-proxy/issues/14)) ([339bdfc](https://github.com/pezops/oidc-proxy/commit/339bdfc0444a50b9c516bf9a13cb03724cec1f7e))
+
+## [0.1.0](https://github.com/pezops/oidc-proxy/compare/v0.0.6...v0.1.0) (2026-06-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* Move to Release Please and relocate to the pezops org ([#13](https://github.com/pezops/oidc-proxy/issues/13))
+
+### Bug Fixes
+
+* Allow JWT validation without a `kid` header ([#16](https://github.com/pezops/oidc-proxy/issues/16)) ([1561d2d](https://github.com/pezops/oidc-proxy/commit/1561d2d356c63b2c8eb6cdf9138e5723ccf6235d))
+
+
+### Documentation
+
+* Document weekly rebuild and floating tags in releases ([#17](https://github.com/pezops/oidc-proxy/issues/17)) ([a610ee1](https://github.com/pezops/oidc-proxy/commit/a610ee1140f0d1d6fb341aac265345ab4af2a20c))
+
+
+### Continuous Integration
+
+* Add check for tidy Go modules ([#18](https://github.com/pezops/oidc-proxy/issues/18)) ([26d77c4](https://github.com/pezops/oidc-proxy/commit/26d77c4e0eb8701c246a91b049abd77c2ddce1cb))
 * Move to Release Please and relocate to the pezops org ([#13](https://github.com/pezops/oidc-proxy/issues/13)) ([3ceb870](https://github.com/pezops/oidc-proxy/commit/3ceb8708e839e208f7df270ec8b50509e2719f54))
 
 ## [0.0.6](https://github.com/pezops/oidc-proxy/compare/v0.0.5...v0.0.6) (2025-12-12)
